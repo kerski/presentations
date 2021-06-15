@@ -1,0 +1,23 @@
+# Variable 'PBI_API_URL' was defined in the Variables tab
+# Variable 'PBI_BUILD_GROUP_ID' was defined in the Variables tab
+# Variable 'PBI_DEV_GROUP_ID' was defined in the Variables tab
+# Variable 'PPU_PASSWORD' was defined in the Variables tab
+# Variable 'PPU_USERNAME' was defined in the Variables tab
+# Variable 'TENANT_ID' was defined in the Variables tab
+trigger:
+  branches:
+    include:
+    - refs/heads/main
+jobs:
+- job: Job_1
+  displayName: Agent job 1
+  pool:
+    vmImage: vs2017-win2016
+  steps:
+  - checkout: self
+  - task: PowerShell@2
+    displayName: Continuous Integration
+    inputs:
+      filePath: PipelineScripts/PremiumPerUser/Start-CI.ps1
+      script: "#Set Default Environment Variables \n$Opts = @{\n    PBIEnvironment = \"$(pbiEnv)\"; # valid options are: local|dev|staging|prod\n    TenantId = \"${TENANT_ID)\";\n    ClientId = \"$(clientId)\";\n    ClientSecret = \"$(clientSecret)\";\n    SharePointSiteURL = \"$(sharePointSiteURL)\";\n    SharePointListGUID = \"$(sharePointListGUID)\";\n    DevOpsURL = \"$(devOpsAPIURL)\";\n    DevOpsAccessToken = \"$(devOpsAccessToken)\";\n}\n\n$Opts\n<#\n#Check for missing variables required for pipeline to work\nif(-not $Opts.PBIEnvironment -match '(local|dev|staging|prod)'){\n    $Opts.PBIEnvironment = 'dev'\n}\n\nif(-not $Opts.TenantId){\n    throw \"Missing or Blank Tenant ID\"\n}\n\nif(-not $Opts.ClientId){\n    throw \"Missing or Blank Client ID\"\n}\n\nif(-not $Opts.ClientSecret){\n    throw \"Missing or Blank Client Secret\"\n}\n\nif(-not $Opts.SharePointSiteURL){\n    throw \"Missing or Blank SharePoint Site URL\"\n}\n\nif(-not $Opts.SharePointListGUID){\n    throw \"Missing or Blank SharePoint List GUID\"\n}\n\nif(-not $Opts.DevOpsURL){\n    throw \"Missing or Blank DevOpsURL\"\n}\n\nif(-not $Opts.DevOpsAccessToken){\n    throw \"Missing or Blank DevOpsAccessToken\"\n}\n>"
+...
