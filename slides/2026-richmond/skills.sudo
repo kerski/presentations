@@ -1,0 +1,197 @@
+# Slide Skills — SudoLang Definition
+# Used to update and maintain Markdown-based presentations
+# Compatible with AI assistants (ChatGPT, GitHub Copilot, etc.)
+
+SlideSkills {
+
+  Description: |
+    A collection of skills for creating, updating, and maintaining
+    Markdown-based slide decks that are version-controlled in Git and
+    converted to PowerPoint via Pandoc in a GitHub Actions workflow.
+
+  # ─────────────────────────────────────────────
+  # Skill 1 — Add a new slide
+  # ─────────────────────────────────────────────
+  AddSlide {
+    Description: Add a new slide to an existing Markdown deck.
+    Inputs:
+      - deckPath: Path to the slides.md file
+      - afterSlideTitle: Title of the slide after which to insert the new slide
+      - newSlideTitle: Heading text for the new slide (level 2, ##)
+      - bullets: List of bullet points for slide body
+      - speakerNotes: Optional speaker notes text
+    Process: |
+      1. Open deckPath and locate the slide whose heading matches afterSlideTitle.
+      2. Find the next --- separator after that slide.
+      3. Insert a new slide block using this template:
+
+         ---
+
+         ## {newSlideTitle}
+
+         {bullets formatted as a Markdown unordered list}
+
+         ::: notes
+         {speakerNotes}
+         :::
+
+      4. Preserve all surrounding content exactly as-is.
+    Output: Updated slides.md with the new slide inserted at the correct position.
+    Constraints:
+      - Do not modify any other slide content.
+      - Maintain consistent --- separators.
+      - Speaker notes block is required; use "TODO: add notes." if none provided.
+  }
+
+  # ─────────────────────────────────────────────
+  # Skill 2 — Update an existing slide
+  # ─────────────────────────────────────────────
+  UpdateSlide {
+    Description: Replace the body content of an existing slide.
+    Inputs:
+      - deckPath: Path to the slides.md file
+      - slideTitle: Exact heading text of the slide to update (level 2, ##)
+      - newBullets: Replacement list of bullet points
+      - newSpeakerNotes: Optional replacement speaker notes
+    Process: |
+      1. Open deckPath and locate the slide heading that exactly matches slideTitle.
+      2. Replace all content between that heading and the next --- separator
+         (or end of file) with the new content.
+      3. Preserve the heading text unchanged.
+      4. If newSpeakerNotes is provided, replace the ::: notes block as well.
+    Output: Updated slides.md with the targeted slide's body replaced.
+    Constraints:
+      - Do not modify any other slides.
+      - Do not change the slide heading text.
+  }
+
+  # ─────────────────────────────────────────────
+  # Skill 3 — Remove a slide
+  # ─────────────────────────────────────────────
+  RemoveSlide {
+    Description: Delete a slide and its speaker notes from the deck.
+    Inputs:
+      - deckPath: Path to the slides.md file
+      - slideTitle: Exact heading text of the slide to remove
+    Process: |
+      1. Open deckPath and locate the slide heading that exactly matches slideTitle.
+      2. Remove the entire block from the preceding --- separator up to (and
+         including) the next --- separator.
+      3. Ensure no double --- separators remain after removal.
+    Output: Updated slides.md with the targeted slide removed.
+    Constraints:
+      - Do not modify any other slides.
+      - Verify the slide exists before attempting removal; raise an error if not found.
+  }
+
+  # ─────────────────────────────────────────────
+  # Skill 4 — Reorder slides
+  # ─────────────────────────────────────────────
+  ReorderSlides {
+    Description: Change the order of slides in the deck.
+    Inputs:
+      - deckPath: Path to the slides.md file
+      - orderedTitles: Ordered list of slide titles representing the desired sequence
+    Process: |
+      1. Parse deckPath into a list of slide blocks (split on ---).
+      2. Build a map of slideTitle → slideBlock for each level-2 heading.
+      3. Reconstruct the deck by emitting slide blocks in the order given
+         by orderedTitles.
+      4. Any slides not listed in orderedTitles are appended at the end in
+         their original relative order.
+      5. Preserve the YAML frontmatter block (the content between the opening
+         --- and the second --- delimiter) at the top of the file.
+    Output: Updated slides.md with slides in the new order.
+    Constraints:
+      - Frontmatter must remain the first block.
+      - All slides must be present in the output; none may be dropped.
+  }
+
+  # ─────────────────────────────────────────────
+  # Skill 5 — Update frontmatter
+  # ─────────────────────────────────────────────
+  UpdateFrontmatter {
+    Description: Update the YAML frontmatter fields at the top of the deck.
+    Inputs:
+      - deckPath: Path to the slides.md file
+      - fields: Key-value map of frontmatter fields to set or update
+        Example: { title: "New Title", date: "2026-05-01", author: "Kerski" }
+    Process: |
+      1. Open deckPath and extract the YAML block between the opening ---
+         and the second --- separator.
+      2. For each key in fields:
+         a. If the key exists, replace its value.
+         b. If the key does not exist, append it as a new line.
+      3. Write the updated frontmatter back to the file, preserving all
+         other content exactly.
+    Output: Updated slides.md with new frontmatter values.
+  }
+
+  # ─────────────────────────────────────────────
+  # Skill 6 — Generate slide outline
+  # ─────────────────────────────────────────────
+  GenerateOutline {
+    Description: |
+      Generate a new slide outline (list of ## headings with brief descriptions)
+      for a given topic, ready to be expanded into a full slides.md file.
+    Inputs:
+      - topic: The presentation topic or title
+      - audience: Target audience description
+      - duration: Approximate presentation length in minutes
+      - keyPoints: List of key points or themes to cover
+    Process: |
+      1. Estimate the number of slides based on duration (roughly 1.5–2 min/slide).
+      2. Draft an outline with:
+         - Title slide
+         - Agenda slide
+         - One section header per major theme
+         - Content slides for each key point
+         - Demo slide (if applicable)
+         - Key Takeaways slide
+         - Resources slide
+         - Q&A slide
+      3. For each slide, provide:
+         - Proposed ## heading
+         - 2–3 word description of intended content
+         - Suggested speaker note theme
+    Output: |
+      A Markdown outline in this format:
+
+      ## {Slide Title}
+      Content: {brief description}
+      Notes theme: {brief note theme}
+
+      ---
+
+      (repeated for each slide)
+    Constraints:
+      - Keep total slide count between (duration/2) and duration.
+      - Every section must flow logically into the next.
+  }
+
+  # ─────────────────────────────────────────────
+  # Skill 7 — Convert bullets to prose notes
+  # ─────────────────────────────────────────────
+  ExpandSpeakerNotes {
+    Description: |
+      Expand terse TODO speaker notes into full spoken-word paragraphs.
+    Inputs:
+      - deckPath: Path to the slides.md file
+      - slideTitle: Specific slide to expand (or "all" for the entire deck)
+      - tone: Presentation tone — e.g., "conversational", "formal", "technical"
+    Process: |
+      1. Locate the target slide(s).
+      2. For each ::: notes block containing "TODO" or fewer than 20 words:
+         a. Read the slide heading and bullet content for context.
+         b. Write 2–4 sentences of speaker notes that:
+            - Expand on the bullet points with depth and examples
+            - Match the requested tone
+            - End with a transition cue to the next slide
+      3. Replace the existing notes block with the expanded text.
+    Output: Updated slides.md with richer speaker notes.
+    Constraints:
+      - Do not alter any bullet point content on the slide itself.
+      - Keep notes concise enough to be spoken in under 90 seconds per slide.
+  }
+
+}
