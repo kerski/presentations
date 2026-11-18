@@ -1,0 +1,77 @@
+name: Generate PowerPoint from Markdown
+
+on:
+  push:
+    paths:
+      - "slides/**/*.md"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  generate-pptx:
+    runs-on: ubuntu-latest
+    name: Convert Markdown slides to PPTX
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Pandoc
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y pandoc
+
+      - name: Detect changed Markdown slide files
+        id: changed
+        run: |
+          # On a push event, compare HEAD to its parent.
+          # On workflow_dispatch, convert every slides/**/*.md file.
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            FILES=$(find slides -name "*.md" | tr '\n' ' ')
+          else
+            FILES=$(git diff --name-only HEAD~1 HEAD -- 'slides/**/*.md' | tr '\n' ' ')
+          fi
+          echo "files=$FILES" >> "$GITHUB_OUTPUT"
+          echo "Markdown files to process: $FILES"
+
+      - name: Convert Markdown to PPTX
+        if: steps.changed.outputs.files != ''
+        run: |
+          for MD_FILE in ${{ steps.changed.outputs.files }}; do
+            if [ ! -f "$MD_FILE" ]; then
+              echo "Skipping $MD_FILE — file not found"
+              continue
+            fi
+
+            DIR=$(dirname "$MD_FILE")
+            BASENAME=$(basename "$MD_FILE" .md)
+            PPTX_FILE="${DIR}/${BASENAME}.pptx"
+
+            echo "Converting $MD_FILE → $PPTX_FILE"
+            pandoc "$MD_FILE" \
+              -f markdown \
+              -t pptx \
+              -o "$PPTX_FILE"
+
+            echo "Created: $PPTX_FILE"
+          done
+
+      - name: Commit generated PPTX files
+        if: steps.changed.outputs.files != ''
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Stage only newly generated PPTX files inside the slides/ directory
+          git add slides/**/*.pptx
+
+          if git diff --cached --quiet; then
+            echo "No PPTX changes to commit."
+          else
+            git commit -m "chore: regenerate PPTX from updated Markdown slides [skip ci]"
+            git push
+          fi
